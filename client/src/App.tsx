@@ -4,9 +4,11 @@ import { CrewPanel } from './CrewPanel';
 import { GraphCanvas, Selection } from './GraphCanvas';
 import { ReplanPanel } from './ReplanPanel';
 import { computeCrewSchedule, computeReplan, computeSchedule } from './schedule';
+import { computeReview } from './review';
 import { SidePanel } from './SidePanel';
 import { SnippetPanel } from './SnippetPanel';
 import { Timeline } from './Timeline';
+import { ReviewPanel } from './ReviewPanel';
 import { BreakPeriod, CommandNode, CommandSnippet, Project, ScheduleResult } from './types';
 import { buildSnippet, instantiateSnippet } from './snippets';
 import { useSimulation } from './useSimulation';
@@ -140,6 +142,21 @@ export default function App() {
   useEffect(() => {
     if (sim.state !== 'paused') setReplanOpen(false);
   }, [sim.state]);
+
+  // 执行复盘：结束或暂停时可查看；模拟进行中或重置后（无快照）自动关闭
+  const [reviewOpen, setReviewOpen] = useState(false);
+  useEffect(() => {
+    if (sim.state === 'running' || sim.state === 'idle') setReviewOpen(false);
+  }, [sim.state]);
+
+  // 复盘只读：基于开始时冻结的快照与当前运行记录即时计算，不写回项目
+  const review = useMemo(
+    () =>
+      reviewOpen && sim.snapshot
+        ? computeReview(sim.snapshot, sim.runtime, sim.state, sim.time)
+        : null,
+    [reviewOpen, sim.snapshot, sim.runtime, sim.state, sim.time],
+  );
 
   // 暂停时刻的续排试算（纯内存，复用现有排程与模拟状态，不写入项目）
   const replan = useMemo(
@@ -367,6 +384,9 @@ export default function App() {
 
   const simActive = sim.state === 'running' || sim.state === 'paused';
   const canStart = project.nodes.length > 0 && sim.state !== 'running' && sim.state !== 'paused';
+  // 结束或暂停时可复盘（且开始时冻结过快照）；运行中禁用，未开始 / 重置后不可用
+  const canReview =
+    (sim.state === 'paused' || sim.state === 'finished') && sim.snapshot !== null;
   const deadline = project.deadline;
   const backward = effectiveSchedule?.backward;
   // 放置模式：选中的片段对象（删除片段后自动退出）
@@ -402,6 +422,13 @@ export default function App() {
             ⚙ 现场续排
           </button>
         )}
+        <button
+          title="查看开始时冻结的排程快照与每条口令的实际执行对比（只读，不写回项目）"
+          disabled={!canReview && sim.state === 'running'}
+          onClick={() => setReviewOpen(true)}
+        >
+          📋 执行复盘
+        </button>
         <span className="sim-clock">
           {sim.state !== 'idle' && `t = ${sim.time.toFixed(1)}s`}
           {sim.state === 'finished' && ' · 全部完成'}
@@ -537,6 +564,17 @@ export default function App() {
             setReplanOpen(false);
           }}
           onClose={() => setReplanOpen(false)}
+        />
+      )}
+
+      {reviewOpen && (
+        <ReviewPanel
+          project={project}
+          snapshot={sim.snapshot !== null}
+          // 图有环时复盘不可用并展示成环路径（冻结快照不被改写，环解除后可再查看）
+          result={cycle ? null : review}
+          cycle={cycle}
+          onClose={() => setReviewOpen(false)}
         />
       )}
     </div>

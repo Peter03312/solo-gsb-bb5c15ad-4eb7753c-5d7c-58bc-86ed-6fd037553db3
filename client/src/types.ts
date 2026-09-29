@@ -155,3 +155,72 @@ export interface NodeRuntime {
   /** 实际/预计结束时间（秒） */
   end?: number;
 }
+
+/**
+ * 模拟开始时冻结的本次排程快照：模拟期间的图编辑与现场续排均不改写，
+ * 重置模拟时清空；仅用于执行复盘，不写回项目。
+ */
+export interface ScheduleSnapshot {
+  /** 冻结时刻的排程零点（秒，固定为 0） */
+  frozenAt: number;
+  /** 冻结时全部口令完成的计划总工期（秒） */
+  makespan: number;
+  /** 冻结时每条口令的计划起止（按当时图结构复制，之后不随编辑变化） */
+  entries: SnapshotEntry[];
+}
+
+/** 冻结快照中的一条口令计划记录 */
+export interface SnapshotEntry {
+  nodeId: string;
+  name: string;
+  /** 冻结时口令的计划时长（秒，计划结束 = 计划开始 + 计划时长） */
+  duration: number;
+  /** 计划开始时间（秒，相对排程零点） */
+  start: number;
+  /** 计划结束时间（秒） */
+  end: number;
+}
+
+/** 执行复盘中单条口令的对比状态 */
+export type ReviewStatus = 'on-time' | 'delayed' | 'not-run';
+
+/** 执行复盘中一条口令的计划 / 实际对比行 */
+export interface ReviewRow {
+  nodeId: string;
+  name: string;
+  /** 计划开始时间（秒，取自冻结快照） */
+  plannedStart: number;
+  /** 计划结束时间（秒，取自冻结快照） */
+  plannedEnd: number;
+  /** 实际开始时间（秒）；未执行为 undefined */
+  actualStart?: number;
+  /** 实际/预计结束时间（秒）；未执行为 undefined */
+  actualEnd?: number;
+  /** 开始偏差（实际开始 - 计划开始，秒）；未执行为 undefined */
+  startDelta?: number;
+  /** 结束偏差（实际结束 - 计划结束，秒）；未执行为 undefined */
+  endDelta?: number;
+  /** 模拟运行时状态（running 行的实际结束为按当时时长的预计结束） */
+  runtimeStatus: NodeStatus;
+  /** 复盘状态：按时 / 延迟 / 未执行 */
+  status: ReviewStatus;
+}
+
+/** 执行复盘结果：各口令对比行（按实际开始时间排序）与总览指标 */
+export interface ReviewResult {
+  rows: ReviewRow[];
+  /** 已完成口令数（runtimeStatus 为 done） */
+  completedCount: number;
+  /** 已开始口令中的最大开始正偏差（秒；无则为 0） */
+  maxDelay: number;
+  /** 计划总工期（秒，冻结快照） */
+  plannedMakespan: number;
+  /** 实际总工期（秒）：已开始口令实际/预计结束的最大值；暂停中为截至当前时刻的值 */
+  actualMakespan: number;
+  /** 总工期偏差（实际总工期 - 计划总工期，秒） */
+  makespanDelta: number;
+  /** 生成复盘时的模拟状态 */
+  state: SimState;
+  /** 生成复盘时的模拟时刻（秒） */
+  time: number;
+}
