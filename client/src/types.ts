@@ -155,3 +155,28 @@ export interface NodeRuntime {
   /** 实际/预计结束时间（秒） */
   end?: number;
 }
+
+/** 模拟开始时冻结的单条口令排程快照（模拟期间的编辑与现场续排均不改写） */
+export interface ReviewCommandSnapshot {
+  nodeId: string;
+  /** 冻结时刻的口令名称（防止模拟期间改名导致复盘对不上） */
+  name: string;
+  /** 冻结的计划开始时间（秒） */
+  plannedStart: number;
+  /** 冻结的计划结束时间（秒，= 计划开始 + 冻结时刻时长） */
+  plannedEnd: number;
+}
+
+/**
+ * 执行复盘快照：模拟开始瞬间冻结。
+ * 模拟期间的图编辑与现场续排都不得改写；重置模拟时清空（只读，不写回项目）。
+ */
+export interface ReviewSnapshot {
+  /** 冻结时每条口令的计划起止（含开始后被删除的口令，用于判定“未执行”） */
+  commands: ReviewCommandSnapshot[];
+  /** 冻结时的计划总工期（秒） */
+  plannedMakespan: number;
+}
+
+/** 复盘中单条口令的状态：按时 / 延迟 / 未执行 */
+export type ReviewStatus = 'onTime' | 'delayed' | 'notRun';

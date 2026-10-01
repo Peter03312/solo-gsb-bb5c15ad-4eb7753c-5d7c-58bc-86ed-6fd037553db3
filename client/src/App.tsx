@@ -3,6 +3,7 @@ import { loadProject, saveProject } from './api';
 import { CrewPanel } from './CrewPanel';
 import { GraphCanvas, Selection } from './GraphCanvas';
 import { ReplanPanel } from './ReplanPanel';
+import { ReviewPanel } from './ReviewPanel';
 import { computeCrewSchedule, computeReplan, computeSchedule } from './schedule';
 import { SidePanel } from './SidePanel';
 import { SnippetPanel } from './SnippetPanel';
@@ -133,7 +134,14 @@ export default function App() {
   const effectiveSchedule = schedule?.ok ? schedule : lastValid;
   const cycle = schedule && !schedule.ok ? schedule.cycle : undefined;
 
-  const sim = useSimulation(project ?? EMPTY, effectiveSchedule);
+  // 图有环时复盘不可用：开始模拟不冻结快照
+  const sim = useSimulation(project ?? EMPTY, effectiveSchedule, !!cycle);
+
+  // 执行复盘：仅暂停 / 结束时可查看；运行、环依赖、未开始模拟时入口禁用
+  const [reviewOpen, setReviewOpen] = useState(false);
+  useEffect(() => {
+    if (sim.state === 'running' || sim.state === 'idle') setReviewOpen(false);
+  }, [sim.state]);
 
   // 现场续排：仅在暂停时打开；离开暂停（继续/重置）自动关闭
   const [replanOpen, setReplanOpen] = useState(false);
@@ -366,7 +374,12 @@ export default function App() {
   }
 
   const simActive = sim.state === 'running' || sim.state === 'paused';
-  const canStart = project.nodes.length > 0 && sim.state !== 'running' && sim.state !== 'paused';
+  // 有环时排程不可信，禁止开始模拟（复盘同样不可用）
+  const canStart =
+    project.nodes.length > 0 &&
+    !cycle &&
+    sim.state !== 'running' &&
+    sim.state !== 'paused';
   const deadline = project.deadline;
   const backward = effectiveSchedule?.backward;
   // 放置模式：选中的片段对象（删除片段后自动退出）
@@ -402,6 +415,23 @@ export default function App() {
             ⚙ 现场续排
           </button>
         )}
+        <button
+          title={
+            cycle
+              ? '口令图存在环依赖，执行复盘不可用'
+              : sim.state === 'idle'
+                ? '尚未开始模拟，执行复盘不可用'
+                : '查看执行复盘：计划 / 实际起止、开始与结束偏差、按时 / 延迟 / 未执行（模拟开始时冻结快照，只读不写回项目）'
+          }
+          disabled={
+            (sim.state !== 'paused' && sim.state !== 'finished') ||
+            !!cycle ||
+            !sim.reviewSnapshot
+          }
+          onClick={() => setReviewOpen(true)}
+        >
+          📋 执行复盘
+        </button>
         <span className="sim-clock">
           {sim.state !== 'idle' && `t = ${sim.time.toFixed(1)}s`}
           {sim.state === 'finished' && ' · 全部完成'}
@@ -537,6 +567,16 @@ export default function App() {
             setReplanOpen(false);
           }}
           onClose={() => setReplanOpen(false)}
+        />
+      )}
+
+      {reviewOpen && sim.reviewSnapshot && (
+        <ReviewPanel
+          snapshot={sim.reviewSnapshot}
+          runtime={sim.runtime}
+          simTime={sim.time}
+          finished={sim.state === 'finished'}
+          onClose={() => setReviewOpen(false)}
         />
       )}
     </div>

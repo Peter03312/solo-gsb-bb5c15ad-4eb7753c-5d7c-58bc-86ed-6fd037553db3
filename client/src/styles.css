@@ -705,6 +705,74 @@ button.danger { background: transparent; border-color: var(--red); color: var(--
 .replan-actions button { padding: 5px 18px; }
 .delta-down { color: var(--green); font-size: 11px; }
 
+/* ---------- 执行复盘 ---------- */
+.review-dialog { width: min(760px, calc(100vw - 48px)); }
+.review-summary {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0;
+}
+.review-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.review-stat-num {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.review-stat-num.stat-warn { color: var(--amber); }
+.review-stat-num.stat-early { color: var(--green); }
+.review-stat-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+.review-stat-sub {
+  font-style: normal;
+  color: var(--muted);
+  font-size: 11px;
+  margin-left: 4px;
+}
+.review-table { font-size: 12px; }
+.review-table td:nth-child(4),
+.review-table td:nth-child(5) { white-space: nowrap; }
+.review-status {
+  display: inline-block;
+  padding: 1px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.review-status.ok {
+  color: var(--green);
+  border-color: var(--green);
+  background: rgba(62, 207, 142, 0.1);
+}
+.review-status.delayed {
+  color: var(--amber);
+  border-color: var(--amber);
+  background: rgba(245, 166, 35, 0.1);
+}
+.review-status.notrun {
+  color: var(--muted);
+  background: transparent;
+}
+.review-status.running {
+  color: var(--amber);
+  border-color: var(--amber);
+  background: rgba(245, 166, 35, 0.1);
+  margin-left: 6px;
+}
+
 .boot-message {
   height: 100%;
   display: flex;
